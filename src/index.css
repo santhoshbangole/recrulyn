@@ -1,0 +1,151 @@
+@import url("https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700;800&family=Source+Sans+3:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+@import "tailwindcss";
+
+:root {
+  --background: #FBF9F4;
+  --surface: #F5F3EE;
+  --surface-2: #EAE8E3;
+
+  --text: #1B1C19;
+  --text-soft: #444748;
+
+  --gold: #775A19;
+  --gold-light: #FFDEA5;
+
+  --border: #C4C7C7;
+
+  --container: 1440px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Source Sans 3", sans-serif;
+  background: var(--background);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+input,
+textarea,
+select {
+  outline: none;
+  font: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+.font-display {
+  font-family: "EB Garamond", serif;
+}
+
+.font-body {
+  font-family: "Source Sans 3", sans-serif;
+}
+
+.font-label {
+  font-family: "JetBrains Mono", monospace;
+}
+
+.max-w-content {
+  max-width: var(--container);
+  margin-inline: auto;
+}
+
+.bg-page {
+  background: var(--background);
+}
+
+.bg-surface {
+  background: var(--surface);
+}
+
+.bg-surface-2 {
+  background: var(--surface-2);
+}
+
+.text-main {
+  color: var(--text);
+}
+
+.text-soft {
+  color: var(--text-soft);
+}
+
+.text-gold {
+  color: var(--gold);
+}
+
+.bg-gold {
+  background: var(--gold);
+}
+
+.bg-gold-light {
+  background: var(--gold-light);
+}
+
+.border-theme {
+  border-color: var(--border);
+}
+
+.shadow-card {
+  box-shadow: 0 25px 60px rgba(0,0,0,.08);
+}
+
+.section {
+  padding: 120px 40px;
+}
+
+.container {
+  max-width: 1440px;
+  margin-inline: auto;
+}
+
+@media (max-width:1024px){
+  .section{
+    padding:90px 32px;
+  }
+}
+
+@media (max-width:768px){
+  .section{
+    padding:72px 24px;
+  }
+}
+
+@media (max-width:480px){
+  .section{
+    padding:60px 20px;
+  }
+}

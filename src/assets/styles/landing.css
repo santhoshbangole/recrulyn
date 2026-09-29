@@ -1,0 +1,47 @@
+@import url("https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700;800&family=Source+Sans+3:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+.landing-page {
+  --background: #FBF9F4;
+  --surface: #F5F3EE;
+  --surface-high: #EAE8E3;
+
+  --text: #1B1C19;
+  --text-soft: #444748;
+
+  --gold: #775A19;
+  --gold-light: #FFDEA5;
+
+  --border: #C4C7C7;
+
+  --container: 1440px;
+
+  font-family: "Source Sans 3", sans-serif;
+  background: var(--background);
+  color: var(--text);
+
+  min-height: 100vh;
+}
+
+.landing-page h1,
+.landing-page h2,
+.landing-page h3,
+.landing-page h4,
+.landing-page h5 {
+  font-family: "EB Garamond", serif;
+}
+
+.landing-page .label {
+  font-family: "JetBrains Mono", monospace;
+}
+
+.landing-container {
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: 40px;
+}
+
+@media (max-width:768px){
+  .landing-container{
+    padding-inline:24px;
+  }
+}
