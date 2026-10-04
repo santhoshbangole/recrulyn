@@ -5,7 +5,7 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { transporter, verifySmtp } from "./services/smtp.service.js";
+import { sendEmail } from "./services/resend.service.js";
 import { syncInbox, hydrateEmailFromImap } from "./services/imap.service.js";
 import {
   uploadToVault,
@@ -91,23 +91,19 @@ app.post("/send-email", async (req, res) => {
   try {
     const { to, cc, bcc, subject, html, attachments } = req.body;
 
-    const info = await transporter.sendMail({
-      from: `"HR" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+    const result = await sendEmail({
       to,
       cc,
       bcc,
       subject,
       html,
-      attachments: (attachments || []).map((file) => ({
-        filename: file.filename,
-        path: file.url,
-      })),
+      attachments,
     });
 
     res.json({
       success: true,
       message: "Email sent successfully.",
-      info,
+      result,
     });
   } catch (error) {
     console.error(error);
@@ -225,7 +221,6 @@ const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
   console.log(`Email Service running on port ${PORT}`);
-  verifySmtp();
 });
 
 let syncing = false;
