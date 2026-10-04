@@ -1594,7 +1594,14 @@ export default function CandidatesPage() {
       return;
     }
 
-    window.location.href = url;
+    const newTab = window.open("", "_blank");
+
+    if (!newTab) {
+      notify.error("Please allow pop-ups for this site to view the resume.");
+      return;
+    }
+
+    newTab.location.href = url;
   }
 
   // ── Forward candidate to employee (internal referral / knowledge check) ──
