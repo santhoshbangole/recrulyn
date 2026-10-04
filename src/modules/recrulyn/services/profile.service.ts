@@ -34,16 +34,16 @@ export const profileService = {
 
       if (existing.data?.id) {
         const { data, error } = await supabase
-          .from("candidate_profiles")
-          .update(payload)
-          .eq(
-            "candidate_id",
-            payload.candidate_id
-          )
-          .select()
-          .single();
+  .from("candidate_profiles")
+  .insert([payload])
+  .select()
+  .single();
 
-        if (error) throw error;
+if (error) {
+  console.error("CANDIDATE PROFILE INSERT ERROR:", error);
+  console.error("CANDIDATE PROFILE INSERT PAYLOAD:", payload);
+  throw error;
+}
 
         return data;
       }
@@ -105,8 +105,7 @@ export const profileService = {
           .maybeSingle();
 
       if (error) throw error;
-
-      return data || local;
+return data || local; 
     } catch (error) {
       if (!isIgnorableDbError(error)) {
         throw error;

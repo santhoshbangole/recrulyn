@@ -1586,24 +1586,6 @@ export default function CandidatesPage() {
     }
   }
 
-  function openResume(candidate: any) {
-    const url = candidate?.resume_url;
-
-    if (!url) {
-      notify.error("No resume on file yet. Upload or replace a resume first.");
-      return;
-    }
-
-    const newTab = window.open("", "_blank");
-
-    if (!newTab) {
-      notify.error("Please allow pop-ups for this site to view the resume.");
-      return;
-    }
-
-    newTab.location.href = url;
-  }
-
   // ── Forward candidate to employee (internal referral / knowledge check) ──
   function openForward(candidate: any) {
     setForwardCandidate(candidate);
@@ -3242,13 +3224,14 @@ Score: ${Number(analysis.resumeScore ?? 0)}%`,
                         </>
                       )}
                       {selectedCandidate.resume_url && (
-                        <button
-                          type="button"
+                        <a
+                          href={selectedCandidate.resume_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="rd-btn rd-btn--emerald"
-                          onClick={() => openResume(selectedCandidate)}
                         >
                           <FileCheck2 size={14} /> View Resume
-                        </button>
+                        </a>
                       )}
                       {role === "HR" &&
                         PIPELINE_STAGES.indexOf(
