@@ -182,15 +182,27 @@ function buildJdText(
 ) {
   const cleanRole = role.trim();
 
+  const cleanSkills = skills
+    .map((skill) => skill.trim())
+    .filter(Boolean);
+
   /*
-   * IMPORTANT:
+   * Custom roles need a richer JD.
    *
-   * recrulynAnalysisService reads the FIRST LINE as the role.
-   * Therefore the role must be the first line of the JD.
+   * The first line MUST remain the role because
+   * recrulynAnalysisService uses the first line as the role.
    */
   return [
     cleanRole,
-    ...skills.map((skill) => skill.trim()).filter(Boolean),
+    `Job role: ${cleanRole}`,
+    `Responsibilities: Work on tasks and projects related to ${cleanRole}.`,
+    `Required skills: ${cleanSkills.length
+      ? cleanSkills.join(", ")
+      : cleanRole}`,
+    `Preferred experience: Experience relevant to ${cleanRole}.`,
+    ...cleanSkills.map(
+      (skill) => `Required skill: ${skill}`
+    ),
   ].join("\n");
 }
 
@@ -302,12 +314,8 @@ export const aiRecruiterService = {
      */
 
     else if (role) {
-      jdText = buildJdText(
-        role,
-        skills
-      );
-    }
-
+  jdText = buildJdText(role, skills);
+}
     else {
       throw new Error(
         "Select a role or type one to match candidates against."
@@ -404,9 +412,18 @@ const matchedSkills = String(
   .map((skill) => skill.trim())
   .filter(Boolean);
 
+/*
+ * Existing roles use the normal 60% threshold.
+ *
+ * Custom roles should not require an exact keyword match,
+ * because the recruiter may enter only a role name such as
+ * "Backend Developer".
+ */
+const isCustomRole = !requirementId && Boolean(role);
+
 if (
   analysis.score < FIT_THRESHOLD ||
-  matchedSkills.length === 0
+  (!isCustomRole && matchedSkills.length === 0)
 ) {
   return null;
 }

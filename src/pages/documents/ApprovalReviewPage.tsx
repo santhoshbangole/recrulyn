@@ -141,16 +141,146 @@ const selected =
     return haystack.includes(query.toLowerCase());
   });
 
-  function handleSignatureChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] || null;
-    setSignatureFile(file);
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setSignaturePreview(url);
-    } else {
-      setSignaturePreview(null);
-    }
+  // function handleSignatureChange(e: React.ChangeEvent<HTMLInputElement>) {
+  //   const file = e.target.files?.[0] || null;
+  //   setSignatureFile(file);
+  //   if (file) {
+  //     const url = URL.createObjectURL(file);
+  //     setSignaturePreview(url);
+  //   } else {
+  //     setSignaturePreview(null);
+  //   }
+  // }
+  async function handleSignatureChange(
+  e: React.ChangeEvent<HTMLInputElement>
+) {
+  const file = e.target.files?.[0] || null;
+
+  if (!file) {
+    setSignatureFile(null);
+    setSignaturePreview(null);
+    return;
   }
+
+  // Maximum 2 MB
+  if (file.size > 2 * 1024 * 1024) {
+    notification.warning(
+      "File Too Large",
+      "Please upload a signature image smaller than 2 MB."
+    );
+
+    e.target.value = "";
+    setSignatureFile(null);
+    setSignaturePreview(null);
+    return;
+  }
+
+  // Only allow PNG/JPEG/JPG
+  const allowedTypes = ["image/png", "image/jpeg", "image/jpg"];
+
+  if (!allowedTypes.includes(file.type)) {
+    notification.warning(
+      "Invalid Signature",
+      "Please upload a PNG, JPG, or JPEG signature image."
+    );
+
+    e.target.value = "";
+    setSignatureFile(null);
+    setSignaturePreview(null);
+    return;
+  }
+
+  try {
+    let finalFile = file;
+
+    /*
+     * Supabase officer-signatures currently expects PNG.
+     *
+     * If the user uploads JPEG/JPG, convert it to PNG before
+     * sending it to approvalService.uploadSignature().
+     */
+    if (file.type === "image/jpeg" || file.type === "image/jpg") {
+      const imageUrl = URL.createObjectURL(file);
+
+      const image = new Image();
+
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () =>
+          reject(new Error("Unable to read signature image."));
+        image.src = imageUrl;
+      });
+
+      const canvas = document.createElement("canvas");
+
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) {
+        URL.revokeObjectURL(imageUrl);
+        throw new Error("Unable to process signature image.");
+      }
+
+      /*
+       * White background prevents JPEG transparency/conversion
+       * issues and produces a valid PNG image.
+       */
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.drawImage(
+        image,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      const pngBlob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(
+          (blob) => resolve(blob),
+          "image/png",
+          1
+        );
+      });
+
+      URL.revokeObjectURL(imageUrl);
+
+      if (!pngBlob) {
+        throw new Error("Unable to convert signature to PNG.");
+      }
+
+      finalFile = new File(
+        [pngBlob],
+        `signature-${Date.now()}.png`,
+        {
+          type: "image/png",
+          lastModified: Date.now(),
+        }
+      );
+    }
+
+    // Create preview
+    const previewUrl = URL.createObjectURL(finalFile);
+
+    setSignatureFile(finalFile);
+    setSignaturePreview(previewUrl);
+
+  } catch (error) {
+    console.error("Signature processing failed:", error);
+
+    notification.error(
+      "Signature Error",
+      "Unable to process the signature image."
+    );
+
+    e.target.value = "";
+    setSignatureFile(null);
+    setSignaturePreview(null);
+  }
+}
 
   function handleRemoveSignature() {
     setSignatureFile(null);

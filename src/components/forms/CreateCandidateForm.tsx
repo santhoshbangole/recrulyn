@@ -218,7 +218,10 @@ export default function CreateCandidateForm({
       // role, current company/designation, experience, and a career
       // summary — persist it now, or the AI Insights tab has nothing to
       // show for these fields until (if ever) something else writes them.
-      await profileService.updateProfileEnrichment(candidate.id, parsed.analysis);
+      await profileService.updateProfileEnrichment(
+        candidate.id,
+        parsed.analysis,
+      );
 
       notify.success("Candidate created successfully.");
       setSelectedFile(null);
@@ -247,6 +250,11 @@ export default function CreateCandidateForm({
 
       for (const file of selectedFiles) {
         const extracted = await recrulynExtractorService.extractText(file);
+        console.log(
+          "EXTRACTED RESUME TEXT:",
+          extracted.resumeText?.substring(0, 1000),
+        );
+        console.log("EXTRACTED RESUME LENGTH:", extracted.resumeText?.length);
 
         if (!extracted.resumeText.trim()) {
           console.log("Skipping empty resume:", file.name);
@@ -306,7 +314,10 @@ export default function CreateCandidateForm({
           certifications: JSON.stringify(parsed.candidate.certifications),
         });
 
-        await profileService.updateProfileEnrichment(candidate.id, parsed.analysis);
+        await profileService.updateProfileEnrichment(
+          candidate.id,
+          parsed.analysis,
+        );
       }
 
       notify.success("Bulk upload completed successfully.");
