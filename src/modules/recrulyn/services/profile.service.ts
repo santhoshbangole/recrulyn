@@ -58,7 +58,10 @@ export const profileService = {
 
       return data;
     } catch (error) {
-      localProfileStore.upsert(payload);
+  console.error("CANDIDATE PROFILE SAVE FAILED:", error);
+  console.error("PROFILE PAYLOAD:", payload);
+
+  localProfileStore.upsert(payload);
 
       if (
         !isIgnorableDbError(error) &&

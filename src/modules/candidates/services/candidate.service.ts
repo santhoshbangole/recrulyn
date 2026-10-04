@@ -205,9 +205,9 @@ console.log("SUPABASE COUNT:", data?.length);
           contentType: file.type || "application/octet-stream",
         });
       } catch (error) {
-        console.warn("Resume storage unavailable, using local file", error);
-        publicUrl = toLocalFileUrl(file);
-      }
+  console.error("RESUME STORAGE UPLOAD FAILED:", error);
+  throw new Error("Resume upload failed. Please try again.");
+}
     }
 
     await this.attachExistingResume(candidateId, publicUrl, file.name);
@@ -218,6 +218,7 @@ console.log("SUPABASE COUNT:", data?.length);
         const parsed = await geminiResumeParserService.parseResume(
           extracted.resumeText
         );
+        console.log("CREATING CANDIDATE PROFILE:", candidateId);
         await profileService.createProfile({
           candidate_id: candidateId,
           resume_text: extracted.resumeText,
