@@ -2108,40 +2108,58 @@ Score: ${Number(analysis.resumeScore ?? 0)}%`,
     console.log("AI ANALYZE CLICKED:", candidate?.id, candidate?.full_name);
 
     try {
-      // 1. Get current profile
+      console.log("AI STEP 1: Getting profile...");
+
       let profile = await profileService.getProfile(candidate.id);
 
+      console.log("AI STEP 2: Profile received:", profile);
+      console.log(
+        "AI STEP 2: Resume text length:",
+        profile?.resume_text?.length,
+      );
+
       if (!profile?.resume_text) {
+        console.log("AI STOPPED: Resume text not found");
         notify.error("Resume text not found.");
         return;
       }
 
-      // 2. Reparse the resume automatically
+      console.log("AI STEP 3: Starting Gemini resume parse...");
+
       setReparsingProfile(true);
 
       const parsed = await geminiResumeParserService.parseResume(
         profile.resume_text,
       );
 
+      console.log("AI STEP 4: Gemini parse completed:", parsed);
+
       await profileService.updateProfileEnrichment(
         candidate.id,
         parsed.analysis,
       );
 
-      // 3. Get the freshly updated profile
+      console.log("AI STEP 5: Profile enrichment completed");
+
       profile = await profileService.getProfile(candidate.id);
+
+      console.log("AI STEP 6: Fresh profile received:", profile);
 
       setCandidateProfile(profile);
       setCandidateAnalysis(profileToAnalysisView(profile));
 
-      // 4. Continue to AI analysis / JD selection
+      console.log("AI STEP 7: Opening JD selection...");
+
       setAnalyzeJDChoice("");
       setAnalyzeJDPrompt(candidate);
+
+      console.log("AI STEP 8: JD selection state set");
     } catch (err: any) {
       console.error("AI ANALYZE ERROR:", err);
       notify.error(err?.message || "AI Analysis Failed");
     } finally {
       setReparsingProfile(false);
+      console.log("AI ANALYZE FINISHED");
     }
   }
   async function confirmAnalyzeWithRequirement() {

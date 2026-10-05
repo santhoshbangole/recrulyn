@@ -1,8 +1,11 @@
 import { calculateRecruitmentScore } from "../../recrulyn/services/recruitmentScoring.service";
+
 import type {
   CandidateEvidence,
   JobRequirement,
+  RequirementMatch,
 } from "../../recrulyn/services/recruitmentScoring.service";
+
 import { groqChatCompletion } from "../../../lib/groq-client";
 
 export type ResumeMatchResult = {
@@ -16,17 +19,16 @@ export type ResumeMatchResult = {
   weaknesses: string[];
   recommendation: string;
   interviewQuestions: string[];
-  // True when the Groq extraction step failed and scoring ran on
-  // empty/neutral data instead of real extracted facts. Any caller
-  // showing this result to a user should surface that clearly —
-  // this is NOT a real match score.
   usedFallback?: boolean;
   fallbackReason?: string;
 };
 
 function extractBalancedJson(text: string): string | null {
   const start = text.indexOf("{");
-  if (start === -1) return null;
+
+  if (start === -1) {
+    return null;
+  }
 
   let depth = 0;
   let inString = false;
@@ -50,18 +52,23 @@ function extractBalancedJson(text: string): string | null {
       continue;
     }
 
-    if (inString) continue;
+    if (inString) {
+      continue;
+    }
 
-    if (char === "{") depth++;
+    if (char === "{") {
+      depth++;
+    }
+
     if (char === "}") {
       depth--;
+
       if (depth === 0) {
         return text.slice(start, i + 1);
       }
     }
   }
 
-  // Never closed — the response was genuinely truncated mid-object.
   return null;
 }
 
@@ -99,132 +106,69 @@ function buildCandidateEvidence(
   raw: any,
   resumeText: string
 ): CandidateEvidence {
-  const candidate =
-    raw?.candidate || raw || {};
+  const candidate = raw?.candidate || raw || {};
 
   return {
-    skills: toStringList(
-      candidate.skills
-    ),
+    skills: toStringList(candidate.skills),
 
-    experience: Array.isArray(
-      candidate.experience
-    )
-      ? candidate.experience.map(
-          (item: any) => ({
-            company:
-              String(
-                item?.company || ""
-              ),
-
-            designation:
-              String(
-                item?.designation || ""
-              ),
-
-            duration:
-              String(
-                item?.duration || ""
-              ),
-
-            description:
-              toStringList(
-                item?.description
-              ),
-          })
-        )
+    experience: Array.isArray(candidate.experience)
+      ? candidate.experience.map((item: any) => ({
+          company: String(item?.company || ""),
+          designation: String(item?.designation || ""),
+          duration: String(item?.duration || ""),
+          description: toStringList(
+            item?.description
+          ),
+        }))
       : [],
 
-    education: Array.isArray(
-      candidate.education
+    education: Array.isArray(candidate.education)
+      ? candidate.education.map((item: any) => ({
+          degree: String(item?.degree || ""),
+          college: String(item?.college || ""),
+          field: String(item?.field || ""),
+          cgpa: String(item?.cgpa || ""),
+          percentage: String(
+            item?.percentage || ""
+          ),
+          year: String(item?.year || ""),
+        }))
+      : [],
+
+    projects: Array.isArray(candidate.projects)
+      ? candidate.projects.map((item: any) => ({
+          title: String(item?.title || ""),
+          technologies: toStringList(
+            item?.technologies
+          ),
+          description: toStringList(
+            item?.description
+          ),
+        }))
+      : [],
+
+    certifications: Array.isArray(
+      candidate.certifications
     )
-      ? candidate.education.map(
+      ? candidate.certifications.map(
           (item: any) => ({
-            degree:
-              String(
-                item?.degree || ""
-              ),
+            name:
+              typeof item === "string"
+                ? item
+                : String(item?.name || ""),
 
-            college:
-              String(
-                item?.college || ""
-              ),
-
-            field:
-              String(
-                item?.field || ""
-              ),
-
-            cgpa:
-              String(
-                item?.cgpa || ""
-              ),
-
-            percentage:
-              String(
-                item?.percentage || ""
-              ),
+            issuer:
+              typeof item === "string"
+                ? ""
+                : String(item?.issuer || ""),
 
             year:
-              String(
-                item?.year || ""
-              ),
+              typeof item === "string"
+                ? ""
+                : String(item?.year || ""),
           })
         )
       : [],
-
-    projects: Array.isArray(
-      candidate.projects
-    )
-      ? candidate.projects.map(
-          (item: any) => ({
-            title:
-              String(
-                item?.title || ""
-              ),
-
-            technologies:
-              toStringList(
-                item?.technologies
-              ),
-
-            description:
-              toStringList(
-                item?.description
-              ),
-          })
-        )
-      : [],
-
-    certifications:
-      Array.isArray(
-        candidate.certifications
-      )
-        ? candidate.certifications.map(
-            (item: any) => ({
-              name:
-                typeof item === "string"
-                  ? item
-                  : String(
-                      item?.name || ""
-                    ),
-
-              issuer:
-                typeof item === "string"
-                  ? ""
-                  : String(
-                      item?.issuer || ""
-                    ),
-
-              year:
-                typeof item === "string"
-                  ? ""
-                  : String(
-                      item?.year || ""
-                    ),
-            })
-          )
-        : [],
 
     resumeText,
   };
@@ -233,49 +177,40 @@ function buildCandidateEvidence(
 function buildJobRequirement(
   raw: any
 ): JobRequirement {
-  const job =
-    raw?.job || raw || {};
+  const job = raw?.job || raw || {};
 
   return {
-    role:
-      String(
-        job.role || ""
-      ).trim(),
+    role: String(
+      job.role || ""
+    ).trim(),
 
-    mandatorySkills:
-      toStringList(
-        job.mandatorySkills
-      ),
+    mandatorySkills: toStringList(
+      job.mandatorySkills
+    ),
 
-    preferredSkills:
-      toStringList(
-        job.preferredSkills
-      ),
+    preferredSkills: toStringList(
+      job.preferredSkills
+    ),
 
-    minimumExperienceYears:
-      Number(
-        job.minimumExperienceYears || 0
-      ),
+    minimumExperienceYears: Number(
+      job.minimumExperienceYears || 0
+    ),
 
-    educationRequirements:
-      toStringList(
-        job.educationRequirements
-      ),
+    educationRequirements: toStringList(
+      job.educationRequirements
+    ),
 
-    responsibilities:
-      toStringList(
-        job.responsibilities
-      ),
+    responsibilities: toStringList(
+      job.responsibilities
+    ),
 
-    certifications:
-      toStringList(
-        job.certifications
-      ),
+    certifications: toStringList(
+      job.certifications
+    ),
 
-    domain:
-      String(
-        job.domain || ""
-      ).trim(),
+    domain: String(
+      job.domain || ""
+    ).trim(),
   };
 }
 
@@ -301,65 +236,54 @@ function createInterviewQuestions(
       );
     });
 
-  return [
-    ...new Set(questions),
-  ];
+  return [...new Set(questions)];
 }
 
 function localScore(
   candidate: CandidateEvidence,
   job: JobRequirement
 ): ResumeMatchResult {
-  const result =
-    calculateRecruitmentScore(
-      candidate,
-      job
+  const result = calculateRecruitmentScore(
+    candidate,
+    job
+  );
+
+  const matchedSkills: string[] =
+    result.matchedRequirements.map(
+      (item: RequirementMatch) =>
+        item.requirement
     );
 
-  const matchedSkills =
-    result.matchedRequirements
-      .map(
-        (item) =>
-          item.requirement
-      );
-
-  const missingSkills =
-    result.missingRequirements
-      .map(
-        (item) =>
-          item.requirement
-      );
+  const missingSkills: string[] =
+    result.missingRequirements.map(
+      (item: RequirementMatch) =>
+        item.requirement
+    );
 
   return {
-    overallMatch:
-      normalizeNumber(
-        result.overallMatch
-      ),
+    overallMatch: normalizeNumber(
+      result.overallMatch
+    ),
 
-    skillMatch:
-      normalizeNumber(
-        result.skillScore
-      ),
+    skillMatch: normalizeNumber(
+      result.skillScore
+    ),
 
-    experienceMatch:
-      normalizeNumber(
-        result.experienceScore
-      ),
+    experienceMatch: normalizeNumber(
+      result.experienceScore
+    ),
 
-    educationMatch:
-      normalizeNumber(
-        result.educationScore
-      ),
+    educationMatch: normalizeNumber(
+      result.educationScore
+    ),
 
     matchedSkills,
 
     missingSkills,
 
-    strengths:
-      result.strengths,
+    strengths: result.strengths,
 
-    weaknesses:
-      result.weaknesses,
+    weaknesses: result.weaknesses,
 
     recommendation:
       result.recommendation,
@@ -372,20 +296,75 @@ function localScore(
   };
 }
 
+function createFallback(
+  resume: string,
+  reason: string
+): ResumeMatchResult {
+  const fallback = localScore(
+    {
+      skills: [],
+      experience: [],
+      education: [],
+      projects: [],
+      certifications: [],
+      resumeText: resume,
+    },
+
+    {
+      role: "",
+      mandatorySkills: [],
+      preferredSkills: [],
+      minimumExperienceYears: 0,
+      educationRequirements: [],
+      responsibilities: [],
+      certifications: [],
+      domain: "",
+    }
+  );
+
+  return {
+    ...fallback,
+    usedFallback: true,
+    fallbackReason: reason,
+  };
+}
+
+function isRateLimitError(
+  error: unknown
+): boolean {
+  const message = String(
+    (error as any)?.message ||
+      error ||
+      ""
+  ).toLowerCase();
+
+  return (
+    (error as any)?.status === 429 ||
+    message.includes("rate limit") ||
+    message.includes(
+      "rate_limit_exceeded"
+    ) ||
+    message.includes("tokens per day") ||
+    message.includes(
+      "tokens per minute"
+    ) ||
+    message.includes("tpm") ||
+    message.includes("tpd")
+  );
+}
+
 export const resumeMatchingAIService = {
   async matchResume(
     jobDescription: string,
     resumeText: string
   ): Promise<ResumeMatchResult> {
-    const jd =
-      String(
-        jobDescription || ""
-      ).trim();
+    const jd = String(
+      jobDescription || ""
+    ).trim();
 
-    const resume =
-      String(
-        resumeText || ""
-      ).trim();
+    const resume = String(
+      resumeText || ""
+    ).trim();
 
     if (!jd) {
       throw new Error(
@@ -400,57 +379,38 @@ export const resumeMatchingAIService = {
     }
 
     /*
-     * Groq is used ONLY to structure the
-     * resume and job description.
-     *
-     * Groq does NOT decide the final score.
+     * Compact prompt to reduce Groq
+     * token consumption.
      */
-    try {
-      const prompt = `
-You are a recruitment information extraction engine.
+    const prompt = `
+Extract facts from the resume and job description below.
 
-Your job is to extract structured FACTS from a Job Description and Resume.
+Return ONE valid JSON object only.
+No Markdown.
+No explanation.
+Do not calculate scores.
+Do not invent facts.
 
-DO NOT calculate a candidate score.
-
-DO NOT rank the candidate.
-
-DO NOT make a hiring decision.
-
-DO NOT invent information.
-
-Use ONLY information explicitly supported by the supplied text.
-
-Return ONLY valid JSON.
-
-Required JSON:
+Schema:
 
 {
   "candidate": {
     "skills": [],
     "experience": [
       {
-        "company": "",
         "designation": "",
-        "duration": "",
-        "description": []
+        "duration": ""
       }
     ],
     "education": [
       {
         "degree": "",
-        "college": "",
-        "field": "",
-        "cgpa": "",
-        "percentage": "",
-        "year": ""
+        "field": ""
       }
     ],
     "projects": [
       {
-        "title": "",
-        "technologies": [],
-        "description": []
+        "technologies": []
       }
     ],
     "certifications": []
@@ -468,178 +428,135 @@ Required JSON:
   }
 }
 
-IMPORTANT:
+Rules:
 
-MANDATORY SKILLS:
-Only put a skill in mandatorySkills if the JD clearly presents it as required, mandatory, must-have, minimum qualification, or equivalent.
-
-PREFERRED SKILLS:
-Put optional, preferred, nice-to-have, bonus, or advantageous skills here.
-
-EXPERIENCE:
-Extract the minimum required experience from the JD only when explicitly stated.
-
-If the JD says "2+ years", return 2.
-
-If experience is not specified, return 0.
-
-CANDIDATE EXPERIENCE:
-Copy the actual duration from the resume when explicitly stated.
-
-Do NOT calculate missing experience.
-
-EDUCATION:
-Extract only explicitly stated qualifications.
-
-RESPONSIBILITIES:
-Extract the important responsibilities and duties from the JD.
-
-DOMAIN:
-Identify the professional domain explicitly suggested by the JD.
+- Include only relevant facts.
+- Mandatory skills must be explicitly required.
+- Optional skills belong in preferredSkills.
+- Experience years must be explicitly stated; otherwise use 0.
+- Use short phrases.
+- Do not write lengthy descriptions.
+- Keep every list to a maximum of 15 items.
+- Return every required JSON key.
+- Use empty arrays or empty strings when unavailable.
 
 RESUME:
-
-${resume}
+${resume.slice(0, 6000)}
 
 JOB DESCRIPTION:
-
-${jd}
+${jd.slice(0, 4500)}
 `;
 
-      let lastExtractionError: unknown;
-      const MAX_ATTEMPTS = 3;
+    let lastError: unknown;
 
-      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-        try {
-          const completion =
-            await groqChatCompletion({
-              messages: [
-                {
-                  role: "user",
-                  content: prompt,
-                },
-              ],
-              temperature: 0,
-              // Extraction JSON for a detailed resume can run long; give it
-              // enough room so the model doesn't get cut off mid-object.
-              max_tokens: 4096,
-            });
+    /*
+     * Only one Groq request.
+     *
+     * Retrying a 429 can consume more quota,
+     * especially when the daily limit is reached.
+     */
+    try {
+      const completion =
+        await groqChatCompletion({
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
 
-          const text =
-            completion
-              .choices[0]
-              ?.message
-              ?.content || "";
-
-          const cleaned =
-            text
-              .replace(
-                /```json/gi,
-                ""
-              )
-              .replace(
-                /```/g,
-                ""
-              )
-              .trim();
-
-          // Some models add a stray sentence before/after the JSON, or
-          // (rarely) still get cut off despite the higher token budget
-          // above. Extract just the outermost balanced {...} object rather
-          // than trusting the whole trimmed string, so a wrapped or
-          // slightly truncated response still has the best chance of
-          // parsing.
-          const jsonSlice = extractBalancedJson(cleaned);
-
-          const parsed =
-            JSON.parse(jsonSlice ?? cleaned);
-
-          const candidate =
-            buildCandidateEvidence(
-              parsed,
-              resume
-            );
-
-          const job =
-            buildJobRequirement(
-              parsed
-            );
+          temperature: 0,
 
           /*
-           * FINAL SCORE IS CALCULATED LOCALLY.
-           *
-           * The LLM cannot override it.
+           * Reduced output size to save
+           * Groq tokens.
            */
-          return localScore(
-            candidate,
-            job
-          );
-        } catch (error) {
-          lastExtractionError = error;
+          max_tokens: 1400,
+        });
 
-          console.warn(
-            `AI extraction attempt ${attempt}/${MAX_ATTEMPTS} failed.`,
-            error
-          );
+      const text =
+        completion.choices[0]?.message
+          ?.content || "";
 
-          // Most failures here are transient (rate limits, a momentary
-          // network blip, or the model occasionally producing malformed
-          // JSON) rather than a permanent problem with this candidate/JD
-          // pair. Retrying a couple of times before giving up avoids
-          // presenting the neutral fallback score as if it were a real,
-          // deterministic result.
-          if (attempt < MAX_ATTEMPTS) {
-            await new Promise((resolve) =>
-              setTimeout(resolve, attempt * 800)
-            );
-          }
-        }
+      const cleaned = text
+        .replace(/```json/gi, "")
+        .replace(/```/g, "")
+        .trim();
+
+      const json =
+        extractBalancedJson(cleaned);
+
+      if (!json) {
+        throw new Error(
+          "Groq returned incomplete JSON. The response may have been truncated."
+        );
       }
 
-      throw lastExtractionError;
-    } catch (error) {
-      const reason = String(
-        (error as any)?.message || error || "Unknown error",
+      const parsed = JSON.parse(json);
+
+      const candidate =
+        buildCandidateEvidence(
+          parsed,
+          resume
+        );
+
+      const job =
+        buildJobRequirement(parsed);
+
+      /*
+       * Prevent empty AI extraction from
+       * appearing as a valid match.
+       */
+      if (
+  (candidate.skills?.length ?? 0) === 0 &&
+  (candidate.experience?.length ?? 0) === 0 &&
+  (candidate.education?.length ?? 0) === 0 &&
+  (candidate.projects?.length ?? 0) === 0 &&
+  (job.mandatorySkills?.length ?? 0) === 0 &&
+  (job.preferredSkills?.length ?? 0) === 0 &&
+  (job.responsibilities?.length ?? 0) === 0
+) {
+  throw new Error(
+    "AI could not extract enough resume and job details to calculate a reliable match."
+  );
+}
+
+      return localScore(
+        candidate,
+        job
       );
+    } catch (error) {
+      lastError = error;
 
       console.warn(
-        "AI extraction unavailable after retries. Falling back to local scoring.",
+        "AI extraction failed:",
         error
       );
 
-      /*
-       * Even when Groq fails, scoring still
-       * happens through the controlled engine.
-       *
-       * NOTE: with no extracted facts, every mandatory/preferred/
-       * responsibility/education/certification score collapses to
-       * its neutral default and the weighted formula always lands
-       * on ~48%, regardless of the candidate or JD. This is NOT a
-       * real match score — callers must check usedFallback and
-       * surface this to the user rather than presenting it as a
-       * genuine result.
-       */
-      const fallback = localScore(
-        {
-          resumeText: resume,
-        },
-        {
-          role: "",
-          mandatorySkills: [],
-          preferredSkills: [],
-          minimumExperienceYears: 0,
-          educationRequirements: [],
-          responsibilities: [],
-          certifications: [],
-          domain: "",
-        }
-      );
-
-      return {
-        ...fallback,
-        usedFallback: true,
-        fallbackReason: reason,
-      };
+      if (isRateLimitError(error)) {
+        console.warn(
+          "Groq rate limit/quota reached. Using local recruitment scoring."
+        );
+      }
     }
+
+    const reason = String(
+      (lastError as any)?.message ||
+        lastError ||
+        "AI extraction failed."
+    );
+
+    console.error(
+      "Resume matching extraction failed:",
+      reason
+    );
+
+    /*
+     * Use local scoring when Groq is unavailable.
+     */
+    return createFallback(
+      resume,
+      reason
+    );
   },
 };
